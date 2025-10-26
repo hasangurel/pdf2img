@@ -55,3 +55,46 @@ def pdf_to_img_from_drive(link: str = Query(..., description="Drive veya direkt 
 def ping():
     return {"ok": True}
 
+import pandas as pd
+
+# CSV yolunu tanımla
+CSV_PATH = "BTCUSD60.csv"  # burayı kendi tam pathinle değiştir
+
+@app.get("/candles")
+def get_candles(
+    symbol: str = Query("BTCUSD", description="Sembol adı (örn: BTCUSD)"),
+    interval: str = Query("1h", description="Zaman aralığı (şu an sadece 1h destekleniyor)"),
+    startTime: int = Query(None, description="Başlangıç zamanı (ms)"),
+    endTime: int = Query(None, description="Bitiş zamanı (ms)"),
+    limit: int = Query(500, description="Limit (maks: 1000)")
+):
+    try:
+        df = pd.read_csv(CSV_PATH)
+
+        # Filtrele
+        if startTime:
+            df = df[df["time"] >= startTime]
+        if endTime:
+            df = df[df["time"] <= endTime]
+
+        # Sıralayıp limit uygula
+        df = df.sort_values("time").head(limit)
+
+        # Binance formatına uygun çıktı üret
+        result = []
+        for _, row in df.iterrows():
+            result.append([
+                int(row["time"]),
+                float(row["open"]),
+                float(row["high"]),
+                float(row["low"]),
+                float(row["close"]),
+                float(row["volume"]),
+                int(row["time"]) + 3600 * 1000,  # closeTime (1 saat sonra)
+                "", "", "", "", "", ""  # Binance'teki diğer alanları boş geçiyoruz
+            ])
+
+        return JSONResponse(content=result)
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
