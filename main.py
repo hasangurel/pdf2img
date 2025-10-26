@@ -60,22 +60,15 @@ import pandas as pd
 # CSV yolunu tanımla
 CSV_PATH = "BTCUSD60.csv"  # burayı kendi tam pathinle değiştir
 
+
 @app.get("/candles")
 def get_candles(
     symbol: str = Query("BTCUSD", description="Sembol adı (örn: BTCUSD)"),
     interval: str = Query("1h", description="Zaman aralığı (şu an sadece 1h destekleniyor)"),
-    startTime: int = Query(None, description="Başlangıç zamanı (ms)"),
-    endTime: int = Query(None, description="Bitiş zamanı (ms)"),
-    limit: int = Query(500, description="Limit (maks: 1000)")
+    limit: int = Query(1000, description="Limit (maks: 100000)")
 ):
     try:
         df = pd.read_csv(CSV_PATH)
-
-        # Filtrele
-        if startTime:
-            df = df[df["time"] >= startTime]
-        if endTime:
-            df = df[df["time"] <= endTime]
 
         # Sıralayıp limit uygula
         df = df.sort_values("time").head(limit)
@@ -90,8 +83,8 @@ def get_candles(
                 float(row["low"]),
                 float(row["close"]),
                 float(row["volume"]),
-                int(row["time"]) + 3600 * 1000,  # closeTime (1 saat sonra)
-                "", "", "", "", "", ""  # Binance'teki diğer alanları boş geçiyoruz
+                int(row["time"]) + 60 * 60 * 1000,  # closeTime (1 saat sonrası)
+                "", "", "", "", "", ""  # Binance uyumlu boş alanlar
             ])
 
         return JSONResponse(content=result)
